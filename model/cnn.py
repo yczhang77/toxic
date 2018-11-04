@@ -36,10 +36,10 @@ for m in range(0, datalength):
 
 '''CONFIGS...'''
 pointer = 0
-batchSize = 64
+batchSize = 128
 numOfUnroll = onelength+2
 vocabulary = dictlength
-trainstep = 100
+trainstep = 200000
 learningRate = 0.0001
 '''END OF CONFIG'''
 dense_num = 256
@@ -68,23 +68,23 @@ def conv2d(x, W):
 def maxpooling(x, mul1, mul2):
     return tf.nn.max_pool(x, ksize = [1, mul1, mul1, 1], strides = [1, mul1, mul1, 1], padding = "SAME")
 
-Wcov1 = weight_init([5, 5, 1, 32], "wconv1")
-Bcov1 = bias_init([32], "bconv1")
+Wcov1 = weight_init([4, 4, 1, 8], "wconv1")
+Bcov1 = bias_init([8], "bconv1")
 
-Wcov2 = weight_init([5, 5, 32, 64], "wconv2")
-Bcov2 = bias_init([64], "bconv2")
+Wcov2 = weight_init([4, 4, 8, 32], "wconv2")
+Bcov2 = bias_init([32], "bconv2")
 
-wfc1 = weight_init([18*100*64, 1024], "wconv3")
-bfc1 = bias_init([1024], "bconv3")
+wfc1 = weight_init([18*100*32, 256], "wconv3")
+bfc1 = bias_init([256], "bconv3")
 
-wfc2 = weight_init([1024, n], "wconv4")
+wfc2 = weight_init([256, n], "wconv4")
 bfc2 = bias_init([n], "bconv4") 
 
 conv1 = tf.nn.relu(conv2d(onedrug, Wcov1)+ Bcov1)
 pool1 = maxpooling(conv1, 2, 2)
 conv2 = tf.nn.relu(conv2d(pool1, Wcov2)+ Bcov2)
 pool2 = maxpooling(conv2, 2, 2)
-pool2flat = tf.reshape(pool2, [-1, 18*100*64])
+pool2flat = tf.reshape(pool2, [-1, 18*100*32])
 fcl1 = tf.nn.relu(tf.matmul(pool2flat, wfc1) + bfc1)
 fc1do = tf.nn.dropout(fcl1, NDprob)
 output = tf.matmul(fc1do, wfc2) + bfc2
@@ -103,12 +103,12 @@ init = tf.global_variables_initializer()
 
 
 def getnextBatch(data, label, batch_size):
-    index = [i for i in range(batch_size, datalength)]
+    index = [i for i in range(0, datalength)]
     count = 0
     batch_xs = []
     batch_ys = []
     np.random.shuffle(index)
-    for m in range(0, datalength-batch_size):
+    for m in range(0, datalength):
         if label[index[m]][1] == 1:
             batch_xs.append(data[index[m]])
             batch_ys.append(label[index[m]])
@@ -153,12 +153,12 @@ with tf.Session() as sess:
         #batch_xs = batch_xs.reshape([batchSize, vocabulary, onelength])
         #print('NOOOO: ', always0(batch_ys))
         #print(sess.run(cost, feed_dict = {xs: batch_xs, ys: batch_ys}))
-        sess.run([trainOp], feed_dict = {xs: batch_xs, ys: batch_ys, NDprob: 0.5})
+        sess.run([trainOp], feed_dict = {xs: batch_xs, ys: batch_ys, NDprob: 0.3})
         if step%10 ==0:
             #print(batch_xs[0], batch_ys, cost)
             
 	    #print(sess.run(pred, feed_dict = {xs: onehotArr[0:64], ys: label[0:64]}))
-            print(sess.run(output, feed_dict = {xs:data[0:100], ys:label[0:100], NDprob: 1.0}))
+            trueacc(sess.run(output, feed_dict = {xs:data[0:100], ys:label[0:100], NDprob: 1.0}), label[0:100])
             print(sess.run(accuracy, feed_dict = {xs: data[0:100], ys: label[0:100], NDprob: 1.0}))
         step = step + 1
     savePath = saver.save(sess, '../bin/RNNmodel256.ckpt')
