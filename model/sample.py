@@ -32,13 +32,13 @@ pointer = 0
 batchSize = len(label)
 numOfUnroll = onelength
 vocabulary = dictlength
-trainstep = datalength
+trainstep = datalength*10
 learningRate = 0.001
 '''END OF CONFIG'''
 dense_num = 256
 
 weights = {
-    'in': tf.get_variable('inW', shape = [dictlength, dense_num]),
+    'in': tf.get_variable('inW', shape = [dictlength, dense_num]), #72*1024 = 73728
     'out': tf.get_variable('outW', shape = [dense_num, 2])
 }
 biases = {
@@ -65,32 +65,19 @@ def RNN(X, weight, biases):
 pointer = 0
 def getnextBatch(data, label, batch_size):
     global pointer
-    Range = np.arange(batch_size)
-    np.random.shuffle(Range)
-    if  batch_size + pointer <= datalength - 1:
-        batch_xS = data[pointer:pointer + batch_size]
+    if  batch_size + pointer <= datalength:
+        batch_xs = data[pointer:pointer + batch_size]
+        batch_ys = label[pointer:pointer + batch_size]
         #print(len(batch_xs[0][0]), len(batch_xs))
-        batch_yS = label[pointer:pointer + batch_size]
-        batch_xs = np.zeros((batch_size, len(data[0]), len(data[0][0])))
-        batch_ys = np.zeros((batch_size, len(label[0])))
-        for count in range(0, batchSize):
-            batch_xs[count] = batch_xS[Range[count]]
-            batch_ys[count] = batch_yS[Range[count]]
         pointer = pointer + batch_size
     else:
         batch_x = data[pointer: datalength]
-        batch_xS = np.vstack((batch_x, data[0 : (batch_size - (datalength% batch_size))]))
+        batch_xs = np.vstack((batch_x, data[0 : (batch_size - (datalength% batch_size))]))
         #print(batch_xs, len(batch_xs), len(batch_x),  (batch_size - (datalength)% batch_size), pointer%batch_size, pointer)
         batch_y = label[pointer: datalength]
-        print(len(batch_y),  len(batch_y[0]))
-
-        batch_yS = np.vstack((batch_y, label[0 : (batch_size  - (datalength % batch_size))]))
-        batch_xs = np.zeros((batch_size, len(data[0]), len(data[0][0])))
-        batch_ys = np.zeros((batch_size, len(label[0])))
-        for count in range(0, batchSize):
-            batch_xs[count] = batch_xS[Range[count]]
-            batch_ys[count] = batch_yS[Range[count]]
-        pointer = datalength % batch_size
+        batch_ys = np.vstack((batch_y, label[0 : (batch_size  - (datalength % batch_size))]))
+        #print(batch_ys, len(batch_ys), len(batch_y))
+        pointer = pointer % batchSize
     return batch_xs, batch_ys
 
 pred = RNN(xs, weights, biases)
